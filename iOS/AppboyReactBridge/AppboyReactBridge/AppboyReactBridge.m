@@ -1,4 +1,5 @@
 #import "AppboyReactBridge.h"
+#import <objc/runtime.h>
 #import <React/RCTLog.h>
 #import <React/RCTConvert.h>
 #import "AppboyKit.h"
@@ -15,6 +16,9 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
 @end
 
 @implementation AppboyReactBridge
+{
+    NSArray *cards;
+}
 
 - (dispatch_queue_t)methodQueue
 {
@@ -34,12 +38,40 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
   if (callback != nil) {
     if (error != nil) {
       callback(@[error, [NSNull null]]);
+    } else if ([result isKindOfClass:[NSMutableArray class]]) {
+        cards = result;
+
+        NSMutableArray *arr = [NSMutableArray new];
+        
+        for (id card in result) {
+            if ([[card class] isSubclassOfClass:[ABKCard class]]) {
+                [arr addObject:[self dictionaryWithPropertiesOfObject:card]];
+            }
+        }
+     
+      callback(@[[NSNull null], arr]);
     } else {
       callback(@[[NSNull null], result]);
     }
   } else {
     RCTLogInfo(@"Warning: AppboyReactBridge callback was null.");
   }
+}
+
+- (NSDictionary *)dictionaryWithPropertiesOfObject:(id)obj {
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    
+    unsigned count;
+    objc_property_t *properties = class_copyPropertyList([obj class], &count);
+    
+    for (int i = 0; i < count; i++) {
+        NSString *key = [NSString stringWithUTF8String:property_getName(properties[i])];
+        [dict setObject:[obj valueForKey:key] ? [obj valueForKey:key] : @"" forKey:key];
+    }
+    
+    free(properties);
+    
+    return [NSDictionary dictionaryWithDictionary:dict];
 }
 
 RCT_EXPORT_METHOD(setSDKFlavor) {
@@ -274,6 +306,23 @@ RCT_EXPORT_METHOD(disableSDK) {
 
 RCT_EXPORT_METHOD(enableSDK) {
   [Appboy requestEnableSDKOnNextAppRun];
+}
+
+RCT_EXPORT_METHOD(logCardImpression:(NSUInteger)cardIndex) {
+    [(ABKCard*)[cards objectAtIndex:cardIndex] logCardImpression];
+}
+
+RCT_EXPORT_METHOD(logCardClicked:(NSUInteger)cardIndex) {
+    [(ABKCard*)[cards objectAtIndex:cardIndex] logCardClicked];
+}
+
+RCT_EXPORT_METHOD(getCardsForCategories:(NSString *)category callback:(RCTResponseSenderBlock)callback) {
+    ABKCardCategory cardCategory = [self getCardCategoryForString:category];
+    if (cardCategory == 0) {
+        [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid card category %@, could not retrieve cards.", category] andResult:nil];
+    } else {
+        [self reportResultWithCallback:callback andError:nil andResult:[[Appboy sharedInstance].feedController getCardsInCategories:cardCategory]];
+    }
 }
 
 RCT_EXPORT_METHOD(getCardCountForCategories:(NSString *)category callback:(RCTResponseSenderBlock)callback) {
