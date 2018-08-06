@@ -22,225 +22,210 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
 
 - (dispatch_queue_t)methodQueue
 {
-  return dispatch_get_main_queue();
+    return dispatch_get_main_queue();
 }
 
 + (BOOL)requiresMainQueueSetup {
-  return YES;
+    return YES;
 }
 
 - (NSDictionary *)constantsToExport
 {
-  return @{@"subscribed":@(ABKSubscribed), @"unsubscribed":@(ABKUnsubscribed),@"optedin":@(ABKOptedIn)};
+    return @{@"subscribed":@(ABKSubscribed), @"unsubscribed":@(ABKUnsubscribed),@"optedin":@(ABKOptedIn)};
 };
 
 - (void)reportResultWithCallback:(RCTResponseSenderBlock)callback andError:(NSString *)error andResult:(id)result {
-  if (callback != nil) {
-    if (error != nil) {
-      callback(@[error, [NSNull null]]);
-    } else if ([result isKindOfClass:[NSMutableArray class]]) {
-        cards = result;
-
-        NSMutableArray *arr = [NSMutableArray new];
-        
-        for (id card in result) {
-            if ([[card class] isSubclassOfClass:[ABKCard class]]) {
-                [arr addObject:[self dictionaryWithPropertiesOfObject:card]];
+    if (callback != nil) {
+        if (error != nil) {
+            callback(@[error, [NSNull null]]);
+        } else if ([result isKindOfClass:[NSMutableArray class]]) {
+            cards = result;
+            
+            NSMutableArray *arr = [NSMutableArray new];
+            
+            for (ABKCard *card in result) {
+                if ([[card class] isSubclassOfClass:[ABKCard class]]) {
+                    [arr addObject:[NSJSONSerialization
+                                    JSONObjectWithData:[card serializeToData] options:0 error:nil]];
+                }
             }
+            
+            callback(@[[NSNull null], arr]);
+        } else {
+            callback(@[[NSNull null], result]);
         }
-     
-      callback(@[[NSNull null], arr]);
     } else {
-      callback(@[[NSNull null], result]);
+        RCTLogInfo(@"Warning: AppboyReactBridge callback was null.");
     }
-  } else {
-    RCTLogInfo(@"Warning: AppboyReactBridge callback was null.");
-  }
-}
-
-- (NSDictionary *)dictionaryWithPropertiesOfObject:(id)obj {
-    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
-    
-    unsigned count;
-    objc_property_t *properties = class_copyPropertyList([obj class], &count);
-    
-    for (int i = 0; i < count; i++) {
-        NSString *key = [NSString stringWithUTF8String:property_getName(properties[i])];
-        [dict setObject:[obj valueForKey:key] ? [obj valueForKey:key] : @"" forKey:key];
-    }
-    
-    free(properties);
-    
-    return [NSDictionary dictionaryWithDictionary:dict];
 }
 
 RCT_EXPORT_METHOD(setSDKFlavor) {
-  [Appboy sharedInstance].sdkFlavor = REACT;
+    [Appboy sharedInstance].sdkFlavor = REACT;
 }
 
 // Returns the deep link from the push dictionary in application:didFinishLaunchingWithOptions: launchOptions, if one exists
 // For more context see getInitialURL() in index.js
 RCT_EXPORT_METHOD(getInitialUrl:(RCTResponseSenderBlock)callback) {
-  if ([AppboyReactUtils sharedInstance].initialUrlString != nil) {
-    [self reportResultWithCallback:callback andError:nil andResult:[AppboyReactUtils sharedInstance].initialUrlString];
-  } else {
-    [self reportResultWithCallback:callback andError:@"Initial URL string was nil." andResult:nil];
-  }
+    if ([AppboyReactUtils sharedInstance].initialUrlString != nil) {
+        [self reportResultWithCallback:callback andError:nil andResult:[AppboyReactUtils sharedInstance].initialUrlString];
+    } else {
+        [self reportResultWithCallback:callback andError:@"Initial URL string was nil." andResult:nil];
+    }
 }
 
 RCT_EXPORT_METHOD(changeUser:(NSString *)userId)
 {
-  RCTLogInfo(@"[Appboy sharedInstance] changeUser with value %@", userId);
-  [[Appboy sharedInstance] changeUser:userId];
+    RCTLogInfo(@"[Appboy sharedInstance] changeUser with value %@", userId);
+    [[Appboy sharedInstance] changeUser:userId];
 }
 
 RCT_EXPORT_METHOD(registerPushToken:(NSString *)token)
 {
-  RCTLogInfo(@"[Appboy sharedInstance] registerPushToken with value %@", token);
-  [[Appboy sharedInstance] registerPushToken:token];
+    RCTLogInfo(@"[Appboy sharedInstance] registerPushToken with value %@", token);
+    [[Appboy sharedInstance] registerPushToken:token];
 }
 
 RCT_EXPORT_METHOD(submitFeedback:(NSString *)replyToEmail message:(NSString *)message isReportingABug:(BOOL)isReportingABug callback:(RCTResponseSenderBlock)callback)
 {
-  RCTLogInfo(@"[Appboy sharedInstance] submitFeedback with values %@ %@ %@", replyToEmail, message, isReportingABug ? @"true" : @"false");
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance] submitFeedback:replyToEmail message:message isReportingABug:isReportingABug])];
+    RCTLogInfo(@"[Appboy sharedInstance] submitFeedback with values %@ %@ %@", replyToEmail, message, isReportingABug ? @"true" : @"false");
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance] submitFeedback:replyToEmail message:message isReportingABug:isReportingABug])];
 }
 
 RCT_EXPORT_METHOD(logCustomEvent:(NSString *)eventName withProperties:(nullable NSDictionary *)properties) {
-  RCTLogInfo(@"[Appboy sharedInstance] logCustomEvent with eventName %@", eventName);
-  [[Appboy sharedInstance] logCustomEvent:eventName withProperties:properties];
+    RCTLogInfo(@"[Appboy sharedInstance] logCustomEvent with eventName %@", eventName);
+    [[Appboy sharedInstance] logCustomEvent:eventName withProperties:properties];
 }
 
 RCT_EXPORT_METHOD(logPurchase:(NSString *)productIdentifier atPrice:(NSString *)price inCurrency:(NSString *)currencyCode withQuantity:(NSUInteger)quantity andProperties:(nullable NSDictionary *)properties) {
-  RCTLogInfo(@"[Appboy sharedInstance] logPurchase with productIdentifier %@", productIdentifier);
-  NSDecimalNumber *decimalPrice = [NSDecimalNumber decimalNumberWithString:price];
-  [[Appboy sharedInstance] logPurchase:productIdentifier inCurrency:currencyCode atPrice:decimalPrice withQuantity:quantity andProperties:properties];
+    RCTLogInfo(@"[Appboy sharedInstance] logPurchase with productIdentifier %@", productIdentifier);
+    NSDecimalNumber *decimalPrice = [NSDecimalNumber decimalNumberWithString:price];
+    [[Appboy sharedInstance] logPurchase:productIdentifier inCurrency:currencyCode atPrice:decimalPrice withQuantity:quantity andProperties:properties];
 }
 
 RCT_EXPORT_METHOD(setFirstName:(NSString *)firstName) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.firstName =  %@", firstName);
-  [Appboy sharedInstance].user.firstName = firstName;
+    RCTLogInfo(@"[Appboy sharedInstance].user.firstName =  %@", firstName);
+    [Appboy sharedInstance].user.firstName = firstName;
 }
 
 RCT_EXPORT_METHOD(setLastName:(NSString *)lastName) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.lastName =  %@", lastName);
-  [Appboy sharedInstance].user.lastName = lastName;
+    RCTLogInfo(@"[Appboy sharedInstance].user.lastName =  %@", lastName);
+    [Appboy sharedInstance].user.lastName = lastName;
 }
 
 RCT_EXPORT_METHOD(setEmail:(NSString *)email) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.email =  %@", email);
-  [Appboy sharedInstance].user.email = email;
+    RCTLogInfo(@"[Appboy sharedInstance].user.email =  %@", email);
+    [Appboy sharedInstance].user.email = email;
 }
 
 RCT_EXPORT_METHOD(setDateOfBirth:(int)year month:(int)month day:(int)day) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.dateOfBirth =  %@", @"date");
-  NSCalendar *calendar = [NSCalendar currentCalendar];
-  NSDateComponents *components = [[NSDateComponents alloc] init];
-  [components setDay:day];
-  [components setMonth:month];
-  [components setYear:year];
-  NSDate *dateOfBirth = [calendar dateFromComponents:components];
-  [Appboy sharedInstance].user.dateOfBirth = dateOfBirth;
+    RCTLogInfo(@"[Appboy sharedInstance].user.dateOfBirth =  %@", @"date");
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [[NSDateComponents alloc] init];
+    [components setDay:day];
+    [components setMonth:month];
+    [components setYear:year];
+    NSDate *dateOfBirth = [calendar dateFromComponents:components];
+    [Appboy sharedInstance].user.dateOfBirth = dateOfBirth;
 }
 
 RCT_EXPORT_METHOD(setCountry:(NSString *)country) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.country =  %@", country);
-  [Appboy sharedInstance].user.country = country;
+    RCTLogInfo(@"[Appboy sharedInstance].user.country =  %@", country);
+    [Appboy sharedInstance].user.country = country;
 }
 
 RCT_EXPORT_METHOD(setHomeCity:(NSString *)homeCity) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.homeCity =  %@", homeCity);
-  [Appboy sharedInstance].user.homeCity = homeCity;
+    RCTLogInfo(@"[Appboy sharedInstance].user.homeCity =  %@", homeCity);
+    [Appboy sharedInstance].user.homeCity = homeCity;
 }
 
 RCT_EXPORT_METHOD(setGender:(NSString *)gender callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].gender =  %@", gender);
-  if ([[gender capitalizedString] hasPrefix:@"F"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderFemale])];
-  } else if ([[gender capitalizedString] hasPrefix:@"M"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderMale])];
-  } else if ([[gender capitalizedString] hasPrefix:@"N"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderNotApplicable])];
-  } else if ([[gender capitalizedString] hasPrefix:@"O"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderOther])];
-  } else if ([[gender capitalizedString] hasPrefix:@"P"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderPreferNotToSay])];
-  } else if ([[gender capitalizedString] hasPrefix:@"U"]) {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderUnknown])];
-  } else {
-    [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid input %@. Gender not set.", gender] andResult:nil];
-  }
+    RCTLogInfo(@"[Appboy sharedInstance].gender =  %@", gender);
+    if ([[gender capitalizedString] hasPrefix:@"F"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderFemale])];
+    } else if ([[gender capitalizedString] hasPrefix:@"M"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderMale])];
+    } else if ([[gender capitalizedString] hasPrefix:@"N"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderNotApplicable])];
+    } else if ([[gender capitalizedString] hasPrefix:@"O"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderOther])];
+    } else if ([[gender capitalizedString] hasPrefix:@"P"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderPreferNotToSay])];
+    } else if ([[gender capitalizedString] hasPrefix:@"U"]) {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setGender:ABKUserGenderUnknown])];
+    } else {
+        [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid input %@. Gender not set.", gender] andResult:nil];
+    }
 }
 
 RCT_EXPORT_METHOD(setPhoneNumber:(NSString *)phone) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.phone =  %@", phone);
-  [Appboy sharedInstance].user.phone = phone;
+    RCTLogInfo(@"[Appboy sharedInstance].user.phone =  %@", phone);
+    [Appboy sharedInstance].user.phone = phone;
 }
 
 RCT_EXPORT_METHOD(setAvatarImageUrl:(NSString *)avatarImageURL) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.avatarImageURL =  %@", avatarImageURL);
-  [Appboy sharedInstance].user.avatarImageURL = avatarImageURL;
+    RCTLogInfo(@"[Appboy sharedInstance].user.avatarImageURL =  %@", avatarImageURL);
+    [Appboy sharedInstance].user.avatarImageURL = avatarImageURL;
 }
 
 RCT_EXPORT_METHOD(setEmailNotificationSubscriptionType:(ABKNotificationSubscriptionType)emailNotificationSubscriptionType callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user.emailNotificationSubscriptionType =  %@", @"enum");
-  [self reportResultWithCallback:callback andError:nil andResult:@([Appboy sharedInstance].user.emailNotificationSubscriptionType = emailNotificationSubscriptionType)];
+    RCTLogInfo(@"[Appboy sharedInstance].user.emailNotificationSubscriptionType =  %@", @"enum");
+    [self reportResultWithCallback:callback andError:nil andResult:@([Appboy sharedInstance].user.emailNotificationSubscriptionType = emailNotificationSubscriptionType)];
 }
 
 RCT_EXPORT_METHOD(setPushNotificationSubscriptionType:(ABKNotificationSubscriptionType)pushNotificationSubscriptionType callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].pushNotificationSubscriptionType =  %@", @"enum");
-  [self reportResultWithCallback:callback andError:nil andResult:@([Appboy sharedInstance].user.pushNotificationSubscriptionType = pushNotificationSubscriptionType)];
+    RCTLogInfo(@"[Appboy sharedInstance].pushNotificationSubscriptionType =  %@", @"enum");
+    [self reportResultWithCallback:callback andError:nil andResult:@([Appboy sharedInstance].user.pushNotificationSubscriptionType = pushNotificationSubscriptionType)];
 }
 
 RCT_EXPORT_METHOD(setBoolCustomUserAttribute:(NSString *)key andValue:(BOOL)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndBoolValue: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andBOOLValue:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndBoolValue: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andBOOLValue:value])];
 }
 
 RCT_EXPORT_METHOD(setStringCustomUserAttribute:(NSString *)key andValue:(NSString *)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndStringValue: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andStringValue:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndStringValue: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andStringValue:value])];
 }
 
 RCT_EXPORT_METHOD(setDoubleCustomUserAttribute:(NSString *)key andValue:(double)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndDoubleValue: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andDoubleValue:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndDoubleValue: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andDoubleValue:value])];
 }
 
 RCT_EXPORT_METHOD(setDateCustomUserAttribute:(NSString *)key andValue:(double)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndDateValue: =  %@", key);
-  NSDate *date = [NSDate dateWithTimeIntervalSince1970:value];
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andDateValue:date])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndDateValue: =  %@", key);
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:value];
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andDateValue:date])];
 }
 
 RCT_EXPORT_METHOD(setIntCustomUserAttribute:(NSString *)key andValue:(int)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndIntValue: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andIntegerValue:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeWithKey:AndIntValue: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeWithKey:key andIntegerValue:value])];
 }
 
 RCT_EXPORT_METHOD(setCustomUserAttributeArray:(NSString *)key andValue:(NSArray *)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeArrayWithKey:array:: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeArrayWithKey:key array:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user setCustomAttributeArrayWithKey:array:: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user setCustomAttributeArrayWithKey:key array:value])];
 }
 
 RCT_EXPORT_METHOD(unsetCustomUserAttribute:(NSString *)key callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user unsetCustomUserAttribute: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user unsetCustomAttributeWithKey:key])];
+    RCTLogInfo(@"[Appboy sharedInstance].user unsetCustomUserAttribute: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user unsetCustomAttributeWithKey:key])];
 }
 
 RCT_EXPORT_METHOD(incrementCustomUserAttribute:(NSString *)key by:(NSInteger)incrementValue callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user incrementCustomUserAttribute: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user incrementCustomUserAttribute:key by:incrementValue])];
+    RCTLogInfo(@"[Appboy sharedInstance].user incrementCustomUserAttribute: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user incrementCustomUserAttribute:key by:incrementValue])];
 }
 
 RCT_EXPORT_METHOD(addToCustomAttributeArray:(NSString *)key value:(NSString *)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user addToCustomAttributeArray: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user addToCustomAttributeArrayWithKey:key value:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user addToCustomAttributeArray: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user addToCustomAttributeArrayWithKey:key value:value])];
 }
 
 RCT_EXPORT_METHOD(removeFromCustomAttributeArray:(NSString *)key value:(NSString *)value callback:(RCTResponseSenderBlock)callback) {
-  RCTLogInfo(@"[Appboy sharedInstance].user removeFromCustomAttributeArrayWithKey: =  %@", key);
-  [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user removeFromCustomAttributeArrayWithKey:key value:value])];
+    RCTLogInfo(@"[Appboy sharedInstance].user removeFromCustomAttributeArrayWithKey: =  %@", key);
+    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].user removeFromCustomAttributeArrayWithKey:key value:value])];
 }
 
 RCT_EXPORT_METHOD(setTwitterData:(NSUInteger)twitterId withScreenName:(NSString *)screenName withName:(NSString *)name withDescription:(NSString *)description withFollowersCount:(NSUInteger)followersCount withFriendsCount:(NSUInteger)friendsCount withStatusesCount:(NSUInteger)statusesCount andProfileImageUrl:(NSString *)profileImageUrl) {
@@ -266,46 +251,46 @@ RCT_EXPORT_METHOD(setFacebookData:(nullable NSDictionary *)facebookUserDictionar
 }
 
 RCT_EXPORT_METHOD(launchNewsFeed) {
-  RCTLogInfo(@"launchNewsFeed called");
-  ABKNewsFeedViewController *feedModal = [[ABKNewsFeedViewController alloc] init];
-  feedModal.navigationItem.title = @"News";
-  UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-  UIViewController *mainViewController = keyWindow.rootViewController;
-  [mainViewController presentViewController:feedModal animated:YES completion:nil];
+    RCTLogInfo(@"launchNewsFeed called");
+    ABKNewsFeedViewController *feedModal = [[ABKNewsFeedViewController alloc] init];
+    feedModal.navigationItem.title = @"News";
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UIViewController *mainViewController = keyWindow.rootViewController;
+    [mainViewController presentViewController:feedModal animated:YES completion:nil];
 }
 
 - (ABKCardCategory)getCardCategoryForString:(NSString *)category {
-  ABKCardCategory cardCategory = 0;
-  if ([[category lowercaseString] isEqualToString:@"advertising"]) {
-    cardCategory = ABKCardCategoryAdvertising;
-  } else if ([[category lowercaseString] isEqualToString:@"announcements"]) {
-    cardCategory = ABKCardCategoryAnnouncements;
-  } else if ([[category lowercaseString] isEqualToString:@"news"]) {
-    cardCategory = ABKCardCategoryNews;
-  } else if ([[category lowercaseString] isEqualToString:@"social"]) {
-    cardCategory = ABKCardCategorySocial;
-  } else if ([[category lowercaseString] isEqualToString:@"no_category"]) {
-    cardCategory = ABKCardCategoryNoCategory;
-  } else if ([[category lowercaseString] isEqualToString:@"all"]) {
-    cardCategory = ABKCardCategoryAll;
-  }
-  return cardCategory;
+    ABKCardCategory cardCategory = 0;
+    if ([[category lowercaseString] isEqualToString:@"advertising"]) {
+        cardCategory = ABKCardCategoryAdvertising;
+    } else if ([[category lowercaseString] isEqualToString:@"announcements"]) {
+        cardCategory = ABKCardCategoryAnnouncements;
+    } else if ([[category lowercaseString] isEqualToString:@"news"]) {
+        cardCategory = ABKCardCategoryNews;
+    } else if ([[category lowercaseString] isEqualToString:@"social"]) {
+        cardCategory = ABKCardCategorySocial;
+    } else if ([[category lowercaseString] isEqualToString:@"no_category"]) {
+        cardCategory = ABKCardCategoryNoCategory;
+    } else if ([[category lowercaseString] isEqualToString:@"all"]) {
+        cardCategory = ABKCardCategoryAll;
+    }
+    return cardCategory;
 }
 
 RCT_EXPORT_METHOD(requestFeedRefresh) {
-  [[Appboy sharedInstance] requestFeedRefresh];
+    [[Appboy sharedInstance] requestFeedRefresh];
 }
 
 RCT_EXPORT_METHOD(wipeData) {
-  [Appboy wipeDataAndDisableForAppRun];
+    [Appboy wipeDataAndDisableForAppRun];
 }
 
 RCT_EXPORT_METHOD(disableSDK) {
-  [Appboy disableSDK];
+    [Appboy disableSDK];
 }
 
 RCT_EXPORT_METHOD(enableSDK) {
-  [Appboy requestEnableSDKOnNextAppRun];
+    [Appboy requestEnableSDKOnNextAppRun];
 }
 
 RCT_EXPORT_METHOD(logCardImpression:(NSUInteger)cardIndex) {
@@ -326,34 +311,34 @@ RCT_EXPORT_METHOD(getCardsForCategories:(NSString *)category callback:(RCTRespon
 }
 
 RCT_EXPORT_METHOD(getCardCountForCategories:(NSString *)category callback:(RCTResponseSenderBlock)callback) {
-  ABKCardCategory cardCategory = [self getCardCategoryForString:category];
-  if (cardCategory == 0) {
-    [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid card category %@, could not retrieve card count.", category] andResult:nil];
-  } else {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].feedController cardCountForCategories:cardCategory])];
-  }
+    ABKCardCategory cardCategory = [self getCardCategoryForString:category];
+    if (cardCategory == 0) {
+        [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid card category %@, could not retrieve card count.", category] andResult:nil];
+    } else {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].feedController cardCountForCategories:cardCategory])];
+    }
 }
 
 RCT_EXPORT_METHOD(getUnreadCardCountForCategories:(NSString *)category callback:(RCTResponseSenderBlock)callback) {
-  ABKCardCategory cardCategory = [self getCardCategoryForString:category];
-  if (cardCategory == 0) {
-    [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid card category %@, could not retrieve unread card count.", category] andResult:nil];
-  } else {
-    [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].feedController unreadCardCountForCategories:cardCategory])];
-  }
+    ABKCardCategory cardCategory = [self getCardCategoryForString:category];
+    if (cardCategory == 0) {
+        [self reportResultWithCallback:callback andError:[NSString stringWithFormat:@"Invalid card category %@, could not retrieve unread card count.", category] andResult:nil];
+    } else {
+        [self reportResultWithCallback:callback andError:nil andResult:@([[Appboy sharedInstance].feedController unreadCardCountForCategories:cardCategory])];
+    }
 }
 
 RCT_EXPORT_METHOD(launchFeedback) {
-  RCTLogInfo(@"launchFeedback called");
-  ABKModalFeedbackViewController *feedbackModal = [[ABKModalFeedbackViewController alloc] init];
-  UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-  UIViewController *mainViewController = keyWindow.rootViewController;
-  [mainViewController presentViewController:feedbackModal animated:YES completion:nil];
+    RCTLogInfo(@"launchFeedback called");
+    ABKModalFeedbackViewController *feedbackModal = [[ABKModalFeedbackViewController alloc] init];
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UIViewController *mainViewController = keyWindow.rootViewController;
+    [mainViewController presentViewController:feedbackModal animated:YES completion:nil];
 }
 
 RCT_EXPORT_METHOD(requestImmediateDataFlush) {
-  RCTLogInfo(@"requestImmediateDataFlush called");
-  [[Appboy sharedInstance] flushDataAndProcessRequestQueue];
+    RCTLogInfo(@"requestImmediateDataFlush called");
+    [[Appboy sharedInstance] flushDataAndProcessRequestQueue];
 }
 
 RCT_EXPORT_MODULE();
