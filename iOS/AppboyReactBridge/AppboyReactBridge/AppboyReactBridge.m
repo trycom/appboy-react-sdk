@@ -43,7 +43,7 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
             
             NSMutableArray *arr = [NSMutableArray new];
             
-            for (ABKCard *card in result) {
+            for (id card in result) {
                 if ([[card class] isSubclassOfClass:[ABKCard class]]) {
                     [arr addObject:[NSJSONSerialization
                                     JSONObjectWithData:[card serializeToData] options:0 error:nil]];
