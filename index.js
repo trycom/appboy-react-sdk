@@ -1,5 +1,5 @@
-const AppboyReactBridge = require('react-native').NativeModules
-	.AppboyReactBridge;
+const { NativeEventEmitter, NativeModules } = require('react-native');
+const AppboyReactBridge = NativeModules.AppboyReactBridge;
 
 /**
  * This default callback logs errors and null or false results. AppboyReactBridge methods with callbacks will
@@ -38,6 +38,16 @@ function callFunctionWithCallback(methodName, argsArray, callback) {
 }
 
 var ReactAppboy = {
+	/**
+	 * Feed updated name constant
+	 */
+	feedUpdated: AppboyReactBridge.feedUpdated,
+
+	/**
+	 * Expose event emitter (subscribe to feedUpdated for instance)
+	 */
+	events: new NativeEventEmitter(AppboyReactBridge),
+
 	/**
 	 * When launching an iOS application that has previously been force closed, React Native's Linking API doesn't
 	 * support handling deep links embedded in push notifications. This is due to a race condition on startup between

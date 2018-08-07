@@ -17,7 +17,8 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
 
 @implementation AppboyReactBridge
 {
-    NSArray *cards;
+    bool _hasListeners;
+    NSArray *_cards;
 }
 
 - (dispatch_queue_t)methodQueue
@@ -31,15 +32,44 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
 
 - (NSDictionary *)constantsToExport
 {
-    return @{@"subscribed":@(ABKSubscribed), @"unsubscribed":@(ABKUnsubscribed),@"optedin":@(ABKOptedIn)};
-};
+    return @{@"subscribed":@(ABKSubscribed),
+             @"unsubscribed":@(ABKUnsubscribed),
+             @"optedin":@(ABKOptedIn),
+             @"feedUpdated": ABKFeedUpdatedNotification};
+}
+
+- (NSArray<NSString *> *)supportedEvents
+{
+    return @[ABKFeedUpdatedNotification];
+}
+
+-(void)startObserving {
+    _hasListeners = YES;
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(feedUpdated:)
+                                                 name:ABKFeedUpdatedNotification
+                                               object:nil];
+}
+
+-(void)stopObserving {
+    _hasListeners = NO;
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)feedUpdated:(NSNotification *)notification {
+    BOOL isSuccessful = [notification.userInfo[ABKFeedUpdatedIsSuccessfulKey] boolValue];
+    
+    if (_hasListeners) {
+        [self sendEventWithName:ABKFeedUpdatedNotification body:@{@"success": @(isSuccessful)}];
+    }
+}
 
 - (void)reportResultWithCallback:(RCTResponseSenderBlock)callback andError:(NSString *)error andResult:(id)result {
     if (callback != nil) {
         if (error != nil) {
             callback(@[error, [NSNull null]]);
         } else if ([result isKindOfClass:[NSMutableArray class]]) {
-            cards = result;
+            _cards = result;
             
             NSMutableArray *arr = [NSMutableArray new];
             
@@ -294,11 +324,11 @@ RCT_EXPORT_METHOD(enableSDK) {
 }
 
 RCT_EXPORT_METHOD(logCardImpression:(NSUInteger)cardIndex) {
-    [(ABKCard*)[cards objectAtIndex:cardIndex] logCardImpression];
+    [(ABKCard*)[_cards objectAtIndex:cardIndex] logCardImpression];
 }
 
 RCT_EXPORT_METHOD(logCardClicked:(NSUInteger)cardIndex) {
-    [(ABKCard*)[cards objectAtIndex:cardIndex] logCardClicked];
+    [(ABKCard*)[_cards objectAtIndex:cardIndex] logCardClicked];
 }
 
 RCT_EXPORT_METHOD(getCardsForCategories:(NSString *)category callback:(RCTResponseSenderBlock)callback) {
