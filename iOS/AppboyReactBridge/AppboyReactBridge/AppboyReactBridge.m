@@ -75,15 +75,24 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
             
             for (id card in result) {
                 if ([[card class] isSubclassOfClass:[ABKCard class]]) {
-                    [arr addObject:[NSJSONSerialization
-                                    JSONObjectWithData:[card serializeToData] options:0 error:nil]];
+                    NSDictionary *dict = [NSJSONSerialization
+                                            JSONObjectWithData:[card serializeToData] options:0 error:nil];
+                    if (dict) {
+                        [arr addObject:dict];
+                    }
                 }
             }
             
-            callback(@[[NSNull null], arr]);
+            if ([arr count] > 0) {
+                callback(@[[NSNull null], arr]);
+            } else {
+                callback(@[[NSNull null], @[]]);
+            }
+            
         } else {
             callback(@[[NSNull null], result]);
         }
+        
     } else {
         RCTLogInfo(@"Warning: AppboyReactBridge callback was null.");
     }
