@@ -77,7 +77,7 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
                 if ([[card class] isSubclassOfClass:[ABKCard class]]) {
                     NSError* error;
                     NSDictionary *dict = [NSJSONSerialization
-                                            JSONObjectWithData:[card serializeToData] options:0 error:&error];
+                                          JSONObjectWithData:[card serializeToData] options:0 error:&error];
                     if (dict != nil && !error) {
                         [arr addObject:dict];
                     }
@@ -90,8 +90,10 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
                 callback(@[[NSNull null], @[]]);
             }
             
-        } else {
+        } else if (result != nil) {
             callback(@[[NSNull null], result]);
+        } else {
+            callback(@[[NSNull null], [NSNull null]]);
         }
         
     } else {
