@@ -67,8 +67,8 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
 - (void)reportResultWithCallback:(RCTResponseSenderBlock)callback andError:(NSString *)error andResult:(id)result {
     if (callback != nil) {
         if (error != nil) {
-            callback(@[error, [NSNull null]]);
-        } else if ([result isKindOfClass:[NSMutableArray class]]) {
+            callback(@[error, @[]]);
+        } else if ([result isKindOfClass:[NSMutableArray class]] || [result isKindOfClass:[NSArray class]]) {
             _cards = result;
             
             NSMutableArray *arr = [NSMutableArray new];
@@ -93,7 +93,7 @@ RCT_ENUM_CONVERTER(ABKNotificationSubscriptionType,
         } else if (result != nil) {
             callback(@[[NSNull null], result]);
         } else {
-            callback(@[[NSNull null], [NSNull null]]);
+            callback(@[[NSNull null], @[]]);
         }
         
     } else {
